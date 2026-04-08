@@ -7,8 +7,16 @@ use windows_sys::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS, HWND};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     FindWindowW, SetForegroundWindow, ShowWindow, IsIconic, SW_RESTORE,
 };
+use windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
 
 fn main() {
+    // Set AppUserModelID so Windows correctly associates taskbar icon
+    // (fixes icon when launched via Start Menu / Windows Search)
+    unsafe {
+        let app_id: Vec<u16> = "com.smartscan.diagnostics\0".encode_utf16().collect();
+        SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
+    }
+
     // Try to create a system-wide named mutex
     let mutex_name: Vec<u16> = "Global\\SmartScan_SingleInstance_Mutex\0"
         .encode_utf16()
