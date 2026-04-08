@@ -23,6 +23,7 @@ local-ip-address = "0.6"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 tokio = { version = "1", features = ["full"] }
 windows-sys = { version = "0.59", features = ["Win32_System_Threading", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell"] }
+tauri-plugin-updater = { version = "2.10.1", features = ["default"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"

@@ -4,7 +4,90 @@
 
 const { invoke } = window.__TAURI__.core;
 const { getCurrentWindow } = window.__TAURI__.window;
+const { listen } = window.__TAURI__.event;
 const appWindow = getCurrentWindow();
+
+// --- Auto-Updater ---
+let updateContentLength = 0;
+
+async function checkForUpdates() {
+    try {
+        const update = await invoke('check_for_update');
+        if (update) {
+            const versionEl = document.getElementById('update-version');
+            const dateEl = document.getElementById('update-date');
+            const bodyEl = document.getElementById('update-body');
+            if (versionEl) versionEl.textContent = `Version ${update.version} is available`;
+            if (dateEl && update.date) {
+                const d = new Date(update.date);
+                dateEl.textContent = `Released: ${d.toLocaleDateString()}`;
+            }
+            if (bodyEl && update.body) {
+                bodyEl.textContent = update.body;
+            }
+            document.getElementById('update-modal').classList.add('active');
+        }
+    } catch (e) {
+        console.log('Update check skipped:', e);
+    }
+}
+
+window.closeUpdateModal = () => {
+    document.getElementById('update-modal').classList.remove('active');
+};
+
+window.installUpdate = async () => {
+    const btn = document.getElementById('update-install-btn');
+    const textEl = document.getElementById('update-install-text');
+    const progressEl = document.getElementById('update-progress');
+    const progressBar = document.getElementById('update-progress-bar');
+    const statusEl = document.getElementById('update-status');
+
+    btn.disabled = true;
+    textEl.textContent = 'Downloading...';
+    progressEl.style.display = 'block';
+    statusEl.textContent = '';
+    updateContentLength = 0;
+
+    // Listen for progress events from Rust
+    const unlisten = await listen('update-progress', (event) => {
+        const data = event.payload;
+        switch (data.event) {
+            case 'Started':
+                updateContentLength = data.contentLength || 0;
+                break;
+            case 'Progress':
+                if (updateContentLength > 0) {
+                    const pct = Math.round((data.downloaded / updateContentLength) * 100);
+                    progressBar.style.width = pct + '%';
+                    textEl.textContent = `Downloading... ${pct}%`;
+                }
+                break;
+            case 'Finished':
+                textEl.textContent = 'Installing...';
+                progressBar.style.width = '100%';
+                break;
+            case 'Installed':
+                statusEl.textContent = 'Update installed! Restarting...';
+                statusEl.className = 'update-status success';
+                break;
+        }
+    });
+
+    try {
+        await invoke('download_and_install_update');
+        statusEl.textContent = 'Update installed! Restarting...';
+        statusEl.className = 'update-status success';
+    } catch (e) {
+        textEl.textContent = 'Download & Install';
+        progressEl.style.display = 'none';
+        btn.disabled = false;
+        statusEl.textContent = 'Update failed: ' + (e.message || e);
+        statusEl.className = 'update-status error';
+    } finally {
+        unlisten();
+    }
+};
 
 // --- Window Controls ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,6 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (maximized) { appWindow.unmaximize(); } else { appWindow.maximize(); }
     });
     document.getElementById('btn-close').addEventListener('click', () => appWindow.close());
+
+    // Check for updates after a short delay
+    setTimeout(() => checkForUpdates(), 2000);
 });
 
 // --- State ---

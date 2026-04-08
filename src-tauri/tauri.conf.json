@@ -23,8 +23,20 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIzNjFBMjk0OTBDM0EwNjcKUldSbm9NT1FsS0poSTJIZHA5ZVg2b2hsZmRsaFVkYlJxTDFxanVESG9wU2wwZFo4NXdra0c5MzEK",
+      "endpoints": [
+        "https://github.com/timflechnerr-ctrl/SmartScan/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": "v1Compatible",
     "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",

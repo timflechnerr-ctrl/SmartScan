@@ -11,6 +11,9 @@
     "core:window:allow-unmaximize",
     "core:window:allow-close",
     "core:window:allow-is-maximized",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install"
   ]
 }

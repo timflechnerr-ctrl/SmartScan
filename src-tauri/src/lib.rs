@@ -2,6 +2,8 @@ mod scanner;
 mod upstash;
 
 use scanner::{ScanCategory, ScanResult};
+use tauri::{Emitter, Manager};
+use tauri_plugin_updater::UpdaterExt;
 
 /// Run a full system scan across all categories
 #[tauri::command]
@@ -61,11 +63,81 @@ async fn import_scan(scan_id: String) -> Result<ScanResult, String> {
         .map_err(|e| format!("Task failed: {}", e))?
 }
 
-use tauri::Manager;
+// --- Auto-Updater Commands ---
+
+#[derive(serde::Serialize, Clone)]
+struct UpdateInfo {
+    version: String,
+    date: Option<String>,
+    body: Option<String>,
+}
+
+/// Check if an update is available, return info if so
+#[tauri::command]
+async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    match updater.check().await {
+        Ok(Some(update)) => Ok(Some(UpdateInfo {
+            version: update.version.clone(),
+            date: update.date.map(|d| d.to_string()),
+            body: update.body.clone(),
+        })),
+        Ok(None) => Ok(None),
+        Err(e) => {
+            // Don't treat network errors as hard failures
+            eprintln!("Update check failed: {}", e);
+            Ok(None)
+        }
+    }
+}
+
+/// Download and install the pending update
+#[tauri::command]
+async fn download_and_install_update(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater.check().await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "No update available".to_string())?;
+
+    let mut downloaded: u64 = 0;
+    let mut content_length: u64 = 0;
+
+    update
+        .download_and_install(
+            |chunk_len, total| {
+                // On first call, total contains the content length
+                if let Some(len) = total {
+                    if content_length == 0 {
+                        content_length = len as u64;
+                        let _ = window.emit("update-progress", serde_json::json!({
+                            "event": "Started",
+                            "contentLength": content_length
+                        }));
+                    }
+                }
+                downloaded += chunk_len as u64;
+                let _ = window.emit("update-progress", serde_json::json!({
+                    "event": "Progress",
+                    "downloaded": downloaded,
+                    "contentLength": content_length
+                }));
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Download finished, installing
+    let _ = window.emit("update-progress", serde_json::json!({
+        "event": "Finished"
+    }));
+
+    Ok(())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Bring existing window to front when user tries to open a second instance
             if let Some(window) = app.get_webview_window("main") {
@@ -79,7 +151,9 @@ pub fn run() {
             run_scan,
             run_category_scan,
             upload_scan,
-            import_scan
+            import_scan,
+            check_for_update,
+            download_and_install_update
         ])
         .setup(|app| {
             // Set window icon for taskbar (use the icon from bundle config)

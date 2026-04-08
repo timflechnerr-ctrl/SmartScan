@@ -1,0 +1,11 @@
+﻿{
+    "platforms":  {
+                      "windows-x86_64":  {
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSbm9NT1FsS0poSTZic0xyanVob1d5Y0JjZDJiajBHUi8zUEVUVFNyUVhOUjJmV0xBS3dsdjFReWd0K3NyMkptdVZOOW8zWXBrcytxNTBnQnJIN2l5Kyt0TlVwR0pNNmdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1NjcxMzgwCWZpbGU6U21hcnRTY2FuXzEuMC4wX3g2NC1zZXR1cC5uc2lzLnppcAp2eUFRSFFDcVVMWm14Z3N1OHoydnVhTmtJdDMwL3hkWTFtUTA1TW9aK3l1ZzhQVW1LRFpheFpGU0VMekd4a0pFakJtSmZNYlQ5cE9MR0NuaStodTJCUT09Cg==",
+                                             "url":  "https://github.com/timflechnerr-ctrl/SmartScan/releases/download/v1.0.0/SmartScan_1.0.0_x64-setup.nsis.zip"
+                                         }
+                  },
+    "pub_date":  "2026-04-08T18:05:30Z",
+    "version":  "1.0.0",
+    "notes":  "SmartScan v1.0.0 - Initial release with auto-updater"
+}

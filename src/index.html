@@ -151,6 +151,38 @@
             </div>
         </div>
 
+        <!-- Update Modal -->
+        <div class="modal-overlay" id="update-modal">
+            <div class="modal update-modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Update Available</h3>
+                    <button class="modal-close" onclick="window.closeUpdateModal()">&times;</button>
+                </div>
+                <div class="update-info">
+                    <div class="update-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                    </div>
+                    <p class="update-version" id="update-version">New version available</p>
+                    <p class="update-date" id="update-date"></p>
+                    <p class="update-body" id="update-body"></p>
+                </div>
+                <div class="update-actions">
+                    <button class="update-btn update-btn-later" onclick="window.closeUpdateModal()">Later</button>
+                    <button class="update-btn update-btn-install" id="update-install-btn" onclick="window.installUpdate()">
+                        <span id="update-install-text">Download &amp; Install</span>
+                        <div class="update-progress" id="update-progress" style="display:none">
+                            <div class="update-progress-bar" id="update-progress-bar"></div>
+                        </div>
+                    </button>
+                </div>
+                <p class="update-status" id="update-status"></p>
+            </div>
+        </div>
+
         <!-- Toast Notification -->
         <div class="toast" id="toast">
             <span class="toast-text" id="toast-text">Copied to clipboard!</span>
