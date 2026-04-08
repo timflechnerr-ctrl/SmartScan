@@ -21,7 +21,6 @@ let scanResult = null;
 let activeCategory = 'all';
 let isScanning = false;
 let currentScanId = null;
-let isImportedScan = false;
 
 // --- Category Icons (SVG paths) ---
 const categoryIcons = {
@@ -32,20 +31,6 @@ const categoryIcons = {
     gamepad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.544-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>',
     wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
     all: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
-};
-
-// --- Toggleable settings map: label → { id, isEnabled(value) } ---
-const TOGGLEABLE_SETTINGS = {
-    'Hyper-V':                  { id: 'hyper_v',              isEnabled: v => /enabled/i.test(v) },
-    'Memory Integrity (HVCI)':  { id: 'memory_integrity',     isEnabled: v => /enabled/i.test(v) },
-    'Real-time Protection':     { id: 'realtime_protection',  isEnabled: v => /enabled/i.test(v) },
-    'Cloud Protection':         { id: 'cloud_protection',     isEnabled: v => /enabled/i.test(v) },
-    'Windows Firewall':         { id: 'firewall',             isEnabled: v => !/disabled/i.test(v) },
-    'UAC':                      { id: 'uac',                  isEnabled: v => /enabled/i.test(v) },
-    'Game Mode':                { id: 'game_mode',            isEnabled: v => /enabled/i.test(v) },
-    'Xbox Game Bar':            { id: 'xbox_game_bar',        isEnabled: v => /enabled/i.test(v) },
-    'Developer Mode':           { id: 'developer_mode',       isEnabled: v => /enabled/i.test(v) },
-    'Test Signing Mode':        { id: 'test_signing',         isEnabled: v => /enabled/i.test(v) },
 };
 
 // --- DOM Elements ---
@@ -365,29 +350,10 @@ function renderEntries(categories, filterId) {
             el.className = 'result-entry';
             el.style.animationDelay = `${entryIndex * 0.03}s`;
 
-            const toggleInfo = TOGGLEABLE_SETTINGS[entry.label];
-            let toggleHtml = '';
-            if (toggleInfo && !isImportedScan) {
-                const isOn = toggleInfo.isEnabled(entry.value);
-                toggleHtml = `
-                    <button class="toggle-btn ${isOn ? 'on' : 'off'}"
-                            data-setting-id="${toggleInfo.id}"
-                            data-label="${escapeHtml(entry.label)}"
-                            data-currently-on="${isOn}"
-                            onclick="window.handleToggle(this)"
-                            title="${isOn ? 'Disable' : 'Enable'} ${escapeHtml(entry.label)}">
-                        <span class="toggle-track">
-                            <span class="toggle-thumb"></span>
-                        </span>
-                    </button>
-                `;
-            }
-
             el.innerHTML = `
                 <span class="status-dot ${entry.status}"></span>
                 <span class="entry-label">${escapeHtml(entry.label)}</span>
                 <span class="entry-value ${entry.status}">${escapeHtml(entry.value)}</span>
-                ${toggleHtml}
             `;
             container.appendChild(el);
             entryIndex++;
@@ -402,103 +368,6 @@ function updateSummary(result) {
     $('warning-count').textContent = allEntries.filter(e => e.status === 'warning').length;
     $('error-count').textContent = allEntries.filter(e => e.status === 'error').length;
 }
-
-// --- Toggle Setting Handler ---
-let isToggling = false;
-
-window.handleToggle = async function (btn) {
-    if (isToggling) return;
-    isToggling = true;
-
-    const settingId = btn.dataset.settingId;
-    const label = btn.dataset.label;
-    const currentlyOn = btn.dataset.currentlyOn === 'true';
-    const newState = !currentlyOn; // flip
-
-    const entry = btn.closest('.result-entry');
-
-    // Show loading overlay on this entry
-    const overlay = document.createElement('div');
-    overlay.className = 'toggle-loading-overlay';
-    overlay.innerHTML = `
-        <div class="toggle-particles">
-            ${Array.from({ length: 20 }, (_, i) => {
-                const angle = (i / 20) * Math.PI * 2;
-                const r = 12 + Math.random() * 8;
-                const hue = Math.random() > 0.5 ? '190' : '260';
-                const size = 2 + Math.random() * 2;
-                return `<span class="toggle-particle" style="
-                    --angle: ${angle}rad;
-                    --radius: ${r}px;
-                    --size: ${size}px;
-                    --hue: ${hue};
-                    --delay: ${(Math.random() * 0.5).toFixed(2)}s;
-                "></span>`;
-            }).join('')}
-        </div>
-        <span class="toggle-loading-text">Applying...</span>
-    `;
-    entry.style.position = 'relative';
-    entry.appendChild(overlay);
-
-    // Disable button
-    btn.disabled = true;
-    btn.classList.add('loading');
-
-    const startTime = Date.now();
-
-    try {
-        const result = await invoke('toggle_setting', { settingId, enable: newState });
-
-        // Enforce minimum 5 second loading time
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 5000) {
-            await sleep(5000 - elapsed);
-        }
-
-        // Update the entry in scanResult
-        if (scanResult) {
-            for (const cat of scanResult.categories) {
-                for (const e of cat.entries) {
-                    if (e.label === label) {
-                        e.value = result.new_value;
-                        e.status = result.new_status;
-                    }
-                }
-            }
-        }
-
-        // Remove overlay with success flash
-        overlay.classList.add('success');
-        await sleep(400);
-        overlay.remove();
-
-        // Re-render entries to update the UI
-        renderEntries(scanResult.categories, activeCategory);
-        updateSummary(scanResult);
-
-        // Show toast
-        let msg = result.message;
-        if (result.needs_restart) {
-            msg += ' ⚡ Restart required!';
-        }
-        showToast(msg);
-
-    } catch (err) {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 3000) {
-            await sleep(3000 - elapsed);
-        }
-        overlay.classList.add('error');
-        await sleep(600);
-        overlay.remove();
-        btn.disabled = false;
-        btn.classList.remove('loading');
-        showToast('Failed: ' + (err.message || err));
-    } finally {
-        isToggling = false;
-    }
-};
 
 // --- Copy Results ---
 window.copyResults = function () {
@@ -624,7 +493,6 @@ window.importScan = async function () {
         const result = await invoke('import_scan', { scanId });
         scanResult = result;
         currentScanId = scanId;
-        isImportedScan = true;
 
         // Close modal
         $('import-modal').classList.remove('active');

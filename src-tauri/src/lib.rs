@@ -2,7 +2,6 @@ mod scanner;
 mod upstash;
 
 use scanner::{ScanCategory, ScanResult};
-use scanner::toggles::ToggleResult;
 
 /// Run a full system scan across all categories
 #[tauri::command]
@@ -62,14 +61,6 @@ async fn import_scan(scan_id: String) -> Result<ScanResult, String> {
         .map_err(|e| format!("Task failed: {}", e))?
 }
 
-/// Toggle a system setting (e.g. Hyper-V, Firewall, etc.)
-#[tauri::command]
-async fn toggle_setting(setting_id: String, enable: bool) -> Result<ToggleResult, String> {
-    tokio::task::spawn_blocking(move || scanner::toggles::toggle_setting(&setting_id, enable))
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
-}
-
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -88,8 +79,7 @@ pub fn run() {
             run_scan,
             run_category_scan,
             upload_scan,
-            import_scan,
-            toggle_setting
+            import_scan
         ])
         .setup(|app| {
             // Set window icon for taskbar (use the icon from bundle config)
