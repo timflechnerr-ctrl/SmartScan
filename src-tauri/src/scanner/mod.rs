@@ -4,6 +4,7 @@ pub mod identity;
 pub mod network;
 pub mod security;
 pub mod system;
+pub mod toggles;
 
 use serde::{Deserialize, Serialize};
 use std::process::Command;

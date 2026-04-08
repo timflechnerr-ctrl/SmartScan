@@ -34,6 +34,20 @@ const categoryIcons = {
     all: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
 };
 
+// --- Toggleable settings map: label → { id, isEnabled(value) } ---
+const TOGGLEABLE_SETTINGS = {
+    'Hyper-V':                  { id: 'hyper_v',              isEnabled: v => /enabled/i.test(v) },
+    'Memory Integrity (HVCI)':  { id: 'memory_integrity',     isEnabled: v => /enabled/i.test(v) },
+    'Real-time Protection':     { id: 'realtime_protection',  isEnabled: v => /enabled/i.test(v) },
+    'Cloud Protection':         { id: 'cloud_protection',     isEnabled: v => /enabled/i.test(v) },
+    'Windows Firewall':         { id: 'firewall',             isEnabled: v => !/disabled/i.test(v) },
+    'UAC':                      { id: 'uac',                  isEnabled: v => /enabled/i.test(v) },
+    'Game Mode':                { id: 'game_mode',            isEnabled: v => /enabled/i.test(v) },
+    'Xbox Game Bar':            { id: 'xbox_game_bar',        isEnabled: v => /enabled/i.test(v) },
+    'Developer Mode':           { id: 'developer_mode',       isEnabled: v => /enabled/i.test(v) },
+    'Test Signing Mode':        { id: 'test_signing',         isEnabled: v => /enabled/i.test(v) },
+};
+
 // --- DOM Elements ---
 const $ = (id) => document.getElementById(id);
 
@@ -350,10 +364,30 @@ function renderEntries(categories, filterId) {
             const el = document.createElement('div');
             el.className = 'result-entry';
             el.style.animationDelay = `${entryIndex * 0.03}s`;
+
+            const toggleInfo = TOGGLEABLE_SETTINGS[entry.label];
+            let toggleHtml = '';
+            if (toggleInfo && !isImportedScan) {
+                const isOn = toggleInfo.isEnabled(entry.value);
+                toggleHtml = `
+                    <button class="toggle-btn ${isOn ? 'on' : 'off'}"
+                            data-setting-id="${toggleInfo.id}"
+                            data-label="${escapeHtml(entry.label)}"
+                            data-currently-on="${isOn}"
+                            onclick="window.handleToggle(this)"
+                            title="${isOn ? 'Disable' : 'Enable'} ${escapeHtml(entry.label)}">
+                        <span class="toggle-track">
+                            <span class="toggle-thumb"></span>
+                        </span>
+                    </button>
+                `;
+            }
+
             el.innerHTML = `
                 <span class="status-dot ${entry.status}"></span>
                 <span class="entry-label">${escapeHtml(entry.label)}</span>
                 <span class="entry-value ${entry.status}">${escapeHtml(entry.value)}</span>
+                ${toggleHtml}
             `;
             container.appendChild(el);
             entryIndex++;
@@ -368,6 +402,103 @@ function updateSummary(result) {
     $('warning-count').textContent = allEntries.filter(e => e.status === 'warning').length;
     $('error-count').textContent = allEntries.filter(e => e.status === 'error').length;
 }
+
+// --- Toggle Setting Handler ---
+let isToggling = false;
+
+window.handleToggle = async function (btn) {
+    if (isToggling) return;
+    isToggling = true;
+
+    const settingId = btn.dataset.settingId;
+    const label = btn.dataset.label;
+    const currentlyOn = btn.dataset.currentlyOn === 'true';
+    const newState = !currentlyOn; // flip
+
+    const entry = btn.closest('.result-entry');
+
+    // Show loading overlay on this entry
+    const overlay = document.createElement('div');
+    overlay.className = 'toggle-loading-overlay';
+    overlay.innerHTML = `
+        <div class="toggle-particles">
+            ${Array.from({ length: 20 }, (_, i) => {
+                const angle = (i / 20) * Math.PI * 2;
+                const r = 12 + Math.random() * 8;
+                const hue = Math.random() > 0.5 ? '190' : '260';
+                const size = 2 + Math.random() * 2;
+                return `<span class="toggle-particle" style="
+                    --angle: ${angle}rad;
+                    --radius: ${r}px;
+                    --size: ${size}px;
+                    --hue: ${hue};
+                    --delay: ${(Math.random() * 0.5).toFixed(2)}s;
+                "></span>`;
+            }).join('')}
+        </div>
+        <span class="toggle-loading-text">Applying...</span>
+    `;
+    entry.style.position = 'relative';
+    entry.appendChild(overlay);
+
+    // Disable button
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    const startTime = Date.now();
+
+    try {
+        const result = await invoke('toggle_setting', { settingId, enable: newState });
+
+        // Enforce minimum 5 second loading time
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 5000) {
+            await sleep(5000 - elapsed);
+        }
+
+        // Update the entry in scanResult
+        if (scanResult) {
+            for (const cat of scanResult.categories) {
+                for (const e of cat.entries) {
+                    if (e.label === label) {
+                        e.value = result.new_value;
+                        e.status = result.new_status;
+                    }
+                }
+            }
+        }
+
+        // Remove overlay with success flash
+        overlay.classList.add('success');
+        await sleep(400);
+        overlay.remove();
+
+        // Re-render entries to update the UI
+        renderEntries(scanResult.categories, activeCategory);
+        updateSummary(scanResult);
+
+        // Show toast
+        let msg = result.message;
+        if (result.needs_restart) {
+            msg += ' ⚡ Restart required!';
+        }
+        showToast(msg);
+
+    } catch (err) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 3000) {
+            await sleep(3000 - elapsed);
+        }
+        overlay.classList.add('error');
+        await sleep(600);
+        overlay.remove();
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        showToast('Failed: ' + (err.message || err));
+    } finally {
+        isToggling = false;
+    }
+};
 
 // --- Copy Results ---
 window.copyResults = function () {
