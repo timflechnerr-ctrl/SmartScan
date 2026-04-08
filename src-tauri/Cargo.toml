@@ -1,6 +1,6 @@
 [package]
 name = "smartscan"
-version = "1.0.0"
+version = "1.0.1"
 description = "SmartScan - System Diagnostics Tool"
 authors = ["SmartScan Team"]
 edition = "2021"
