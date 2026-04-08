@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartScan</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="/main.js" defer></script>
+</head>
+<body>
+    <!-- Background animated grid -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header" data-tauri-drag-region>
+            <div class="header-left" data-tauri-drag-region>
+                <span class="logo-text" data-tauri-drag-region>Smart<span class="logo-accent">Scan</span></span>
+            </div>
+            <div class="header-right">
+                <span class="version-badge">v1.0.0</span>
+                <div class="window-controls">
+                    <button class="win-btn win-minimize" id="btn-minimize" title="Minimize">
+                        <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </button>
+                    <button class="win-btn win-maximize" id="btn-maximize" title="Maximize">
+                        <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+                    </button>
+                    <button class="win-btn win-close" id="btn-close" title="Close">
+                        <svg viewBox="0 0 12 12"><line x1="2" y1="2" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="2" x2="2" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Welcome / Scan Screen -->
+            <div id="scan-screen" class="screen active">
+                <div class="scan-hero">
+                    <!-- Particle Field -->
+                    <div class="particle-field" id="particle-field"></div>
+
+                    <!-- Scan Button (center) -->
+                    <button class="scan-button-center" id="scan-button" onclick="window.startScan()">
+                        <div class="scan-btn-glow"></div>
+                        <div class="scan-btn-inner">
+                            <svg class="scan-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5,3 19,12 5,21"/>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <!-- Scanning text (shown during scan) -->
+                    <div class="scan-status-text" id="scan-status-text">Scanning...</div>
+
+                    <!-- Supporter Import (bottom corner) -->
+                    <button class="import-corner-btn" id="import-button" onclick="window.openImportModal()">
+                        Import Scan-ID
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="results-screen" class="screen">
+                <!-- Summary Bar -->
+                <div class="summary-bar" id="summary-bar">
+                    <div class="summary-item">
+                        <span class="summary-number" id="total-checks">0</span>
+                        <span class="summary-label">Checks</span>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item summary-ok">
+                        <span class="summary-number" id="ok-count">0</span>
+                        <span class="summary-label">OK</span>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item summary-warnings">
+                        <span class="summary-number" id="warning-count">0</span>
+                        <span class="summary-label">Warnings</span>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item summary-errors">
+                        <span class="summary-number" id="error-count">0</span>
+                        <span class="summary-label">Issues</span>
+                    </div>
+                    <div class="summary-actions">
+                        <button class="action-btn share-btn" id="share-btn" onclick="window.shareScan()" title="Share Scan">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                        </button>
+                        <button class="action-btn" id="copy-btn" onclick="window.copyResults()" title="Copy to Clipboard">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                        <button class="action-btn" id="rescan-btn" onclick="window.startScan()" title="Rescan">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="category-tabs" id="category-tabs"></div>
+
+                <!-- Results List -->
+                <div class="results-container" id="results-container"></div>
+            </div>
+        </main>
+
+        <!-- Import Modal -->
+        <div class="modal-overlay" id="import-modal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Import Scan</h3>
+                    <button class="modal-close" onclick="window.closeImportModal()">&times;</button>
+                </div>
+                <p class="modal-desc">Enter a Scan-ID to view the results from another system.</p>
+                <div class="modal-input-group">
+                    <input type="text" class="modal-input" id="import-id-input" placeholder="SmartScan-XXXX-XXXX-XXXX-XX" spellcheck="false" />
+                    <button class="modal-submit" id="import-submit" onclick="window.importScan()">Load</button>
+                </div>
+                <div class="modal-status" id="import-status"></div>
+            </div>
+        </div>
+
+        <!-- Share Modal -->
+        <div class="modal-overlay" id="share-modal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Scan Shared!</h3>
+                    <button class="modal-close" onclick="window.closeShareModal()">&times;</button>
+                </div>
+                <p class="modal-desc">Your scan has been uploaded. Share this ID with your supporter:</p>
+                <div class="scan-id-display" id="scan-id-display">
+                    <span class="scan-id-text" id="scan-id-text">SmartScan-XXXX-XXXX-XXXX-XX</span>
+                    <button class="scan-id-copy" onclick="window.copyScanId()" title="Copy ID">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="modal-hint">Expires in 7 days</p>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">
+            <span class="toast-text" id="toast-text">Copied to clipboard!</span>
+        </div>
+    </div>
+</body>
+</html>
